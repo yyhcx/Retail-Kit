@@ -86,7 +86,7 @@ export function ToolLibrary({
                         </div>
                         {(link.flagship || isActive) ? (
                           <span
-                            className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold leading-none sm:px-3 ${
+                            className={`inline-flex min-w-[3.75rem] shrink-0 items-center justify-center whitespace-nowrap rounded-full px-3 py-1 text-center text-xs font-semibold leading-none sm:min-w-0 ${
                               link.flagship
                                 ? "bg-sky-100 text-sky-800"
                                 : "bg-slate-100 text-slate-700"
