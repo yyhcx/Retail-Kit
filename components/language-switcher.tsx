@@ -6,8 +6,8 @@ export function LanguageSwitcher() {
   const { language, setLanguage, t } = useTranslation();
 
   return (
-    <div className="flex items-center gap-2 text-sm">
-      <span aria-hidden className="text-base">
+    <div className="flex shrink-0 items-center gap-1 whitespace-nowrap text-xs sm:gap-2 sm:text-sm">
+      <span aria-hidden className="text-sm leading-none sm:text-base">
         {t.language.label}
       </span>
       <LanguageButton
@@ -38,7 +38,7 @@ function LanguageButton({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-md px-1.5 py-0.5 font-medium transition-colors ${
+      className={`whitespace-nowrap rounded-md px-0.5 py-0.5 font-medium leading-none transition-colors sm:px-1.5 ${
         active
           ? "text-sky-700"
           : "text-slate-600 hover:text-sky-700"
