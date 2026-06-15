@@ -1,6 +1,9 @@
 "use client";
 
-import Link from "next/link";
+import { SiteHeader } from "@/components/site-header";
+import { formatCurrency, formatPercent } from "@/lib/i18n/format";
+import { useTranslation } from "@/lib/i18n/language-context";
+import { getPerformance } from "@/lib/roi/performance";
 import { useMemo, useState } from "react";
 
 function parseAmount(value: string): number {
@@ -8,27 +11,17 @@ function parseAmount(value: string): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
-
-function formatPercent(value: number): string {
-  return `${value.toFixed(1)}%`;
-}
-
-const inputs = [
-  { id: "campaignCost", label: "Campaign Cost", placeholder: "0.00" },
-  { id: "prizeCost", label: "Prize Cost", placeholder: "0.00" },
-  { id: "staffCost", label: "Staff Cost", placeholder: "0.00" },
-  { id: "additionalRevenue", label: "Additional Revenue", placeholder: "0.00" },
-] as const;
+const DEMO_DATA = {
+  campaignCost: "1000",
+  prizeCost: "500",
+  staffCost: "500",
+  additionalRevenue: "4000",
+};
 
 export default function ROICalculatorPage() {
+  const { t, language } = useTranslation();
+  const copy = t.roiCalculator;
+
   const [campaignCost, setCampaignCost] = useState("");
   const [prizeCost, setPrizeCost] = useState("");
   const [staffCost, setStaffCost] = useState("");
@@ -44,162 +37,211 @@ export default function ROICalculatorPage() {
     [campaignCost, prizeCost, staffCost, additionalRevenue],
   );
 
+  const hasInput =
+    campaignCost !== "" ||
+    prizeCost !== "" ||
+    staffCost !== "" ||
+    additionalRevenue !== "";
+
   const totalCost =
     values.campaignCost + values.prizeCost + values.staffCost;
   const profit = values.additionalRevenue - totalCost;
-  const roi = totalCost > 0 ? (profit / totalCost) * 100 : 0;
+  const hasCostData = totalCost > 0;
+  const roi = hasCostData ? (profit / totalCost) * 100 : 0;
+  const performance = getPerformance(
+    roi,
+    hasCostData && hasInput,
+    copy.ratings,
+  );
+  type CostDriver = keyof typeof copy.costRecommendations;
+  const costDrivers: Array<{ key: CostDriver; value: number }> = [
+    { key: "campaignCost", value: values.campaignCost },
+    { key: "prizeCost", value: values.prizeCost },
+    { key: "staffCost", value: values.staffCost },
+  ];
+  const primaryCostDriver = costDrivers.reduce((highest, current) =>
+    current.value > highest.value ? current : highest,
+  );
+  const recommendationTier =
+    performance.tier === "loss-making"
+      ? "lossMaking"
+      : performance.tier === "break-even"
+        ? "breakEven"
+      : performance.tier === "high-performing"
+        ? "highPerforming"
+        : performance.tier;
+  const recommendation =
+    hasCostData && hasInput && primaryCostDriver.value > 0 && recommendationTier !== "pending"
+      ? copy.costRecommendations[primaryCostDriver.key][recommendationTier]
+      : performance.recommendation;
 
-  const setters = {
-    campaignCost: setCampaignCost,
-    prizeCost: setPrizeCost,
-    staffCost: setStaffCost,
-    additionalRevenue: setAdditionalRevenue,
-  };
+  const inputs = [
+    { id: "campaignCost", label: copy.inputs.campaignCost, value: campaignCost, setter: setCampaignCost },
+    { id: "prizeCost", label: copy.inputs.prizeCost, value: prizeCost, setter: setPrizeCost },
+    { id: "staffCost", label: copy.inputs.staffCost, value: staffCost, setter: setStaffCost },
+    { id: "additionalRevenue", label: copy.inputs.additionalRevenue, value: additionalRevenue, setter: setAdditionalRevenue },
+  ] as const;
 
-  const state = {
-    campaignCost,
-    prizeCost,
-    staffCost,
-    additionalRevenue,
-  };
+  function loadDemoData() {
+    setCampaignCost(DEMO_DATA.campaignCost);
+    setPrizeCost(DEMO_DATA.prizeCost);
+    setStaffCost(DEMO_DATA.staffCost);
+    setAdditionalRevenue(DEMO_DATA.additionalRevenue);
+  }
+
+  function resetForm() {
+    setCampaignCost("");
+    setPrizeCost("");
+    setStaffCost("");
+    setAdditionalRevenue("");
+  }
+
+  const fmt = (value: number) => formatCurrency(value, language);
 
   return (
-    <div className="flex min-h-full flex-col bg-white font-sans text-slate-800">
-      <header className="sticky top-0 z-10 border-b border-blue-100 bg-white/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-2.5 transition-opacity hover:opacity-80">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm shadow-blue-200">
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349M3.75 21V9.349m0 0a3.001 3.001 0 013.75-.615A12.956 12.956 0 0112 6c2.34 0 4.47.881 6.08 2.33a3.001 3.001 0 013.75.615V9.35" />
-              </svg>
+    <div className="flex min-h-full flex-col bg-[#f5f8fc] font-sans text-slate-800">
+      <SiteHeader />
+
+      <main className="flex-1">
+        <section className="relative overflow-hidden px-4 pb-0 pt-8 sm:px-6">
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(148,163,184,0.18)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.12)_1px,transparent_1px)] bg-[size:44px_44px] opacity-30" />
+          <div className="relative mx-auto max-w-7xl">
+            <div className="mb-5 flex flex-col gap-3 border-b border-slate-200 pb-5 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/85 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600 shadow-sm">
+                  <span className="h-2 w-2 rounded-full bg-sky-500" />
+                  {copy.badge}
+                </div>
+                <h1 className="mt-4 text-3xl font-semibold text-slate-950 sm:text-4xl">
+                  {copy.title}
+                </h1>
+                <p className="mt-3 text-sm leading-6 text-slate-600 sm:text-base lg:max-w-4xl">
+                  {copy.subtitle}
+                </p>
+              </div>
+              {hasCostData && hasInput && (
+                <div className="flex shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                  <span className="text-sm text-slate-500">{copy.campaignHealth}</span>
+                  <span className="text-sm font-semibold text-slate-900">
+                    {performance.health}
+                  </span>
+                </div>
+              )}
             </div>
-            <span className="text-lg font-semibold tracking-tight text-slate-900">
-              Retail Kit
-            </span>
-          </Link>
-          <Link
-            href="/"
-            className="text-sm font-medium text-slate-600 transition-colors hover:text-blue-600"
-          >
-            ← All Tools
-          </Link>
-        </div>
-      </header>
-
-      <main className="flex-1 px-6 py-10 sm:py-14">
-        <div className="mx-auto max-w-5xl">
-          <div className="mb-10">
-            <p className="text-sm font-medium text-blue-600">Tool</p>
-            <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-              ROI Calculator
-            </h1>
-            <p className="mt-2 max-w-xl text-slate-600">
-              Calculate retail campaign ROI and profitability from your campaign
-              costs and additional revenue.
-            </p>
           </div>
+        </section>
 
-          <div className="grid gap-8 lg:grid-cols-2">
-            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-              <h2 className="text-lg font-semibold text-slate-900">Inputs</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Enter your campaign costs and expected revenue.
-              </p>
+        <div className="mx-auto max-w-6xl px-4 pb-10 pt-0 sm:px-6 sm:pb-12">
+          <div className="grid gap-8 lg:grid-cols-5">
+            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8 lg:col-span-2">
+              <h2 className="text-lg font-semibold text-slate-900">{copy.inputsTitle}</h2>
+              <p className="mt-1 text-sm text-slate-500">{copy.inputsSubtitle}</p>
 
               <div className="mt-6 space-y-5">
                 {inputs.map((input) => (
                   <div key={input.id}>
-                    <label
-                      htmlFor={input.id}
-                      className="block text-sm font-medium text-slate-700"
-                    >
+                    <label htmlFor={input.id} className="block text-sm font-medium text-slate-700">
                       {input.label}
                     </label>
                     <div className="relative mt-1.5">
                       <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400">
-                        $
+                        {t.common.currencySymbol}
                       </span>
                       <input
                         id={input.id}
                         type="number"
                         min="0"
                         step="0.01"
-                        placeholder={input.placeholder}
-                        value={state[input.id]}
-                        onChange={(e) => setters[input.id](e.target.value)}
+                        placeholder="0.00"
+                        value={input.value}
+                        onChange={(e) => input.setter(e.target.value)}
                         className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-8 pr-4 text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
                       />
                     </div>
                   </div>
                 ))}
               </div>
+
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                <button type="button" onClick={loadDemoData} className="pill-button flex-1">
+                  {t.common.loadDemoData}
+                </button>
+                <button type="button" onClick={resetForm} className="pill-button-secondary flex-1">
+                  {t.common.reset}
+                </button>
+              </div>
             </section>
 
-            <section className="flex flex-col gap-6">
-              <div className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-600 to-blue-700 p-6 text-white shadow-lg shadow-blue-200 sm:p-8">
-                <h2 className="text-lg font-semibold text-blue-100">ROI</h2>
-                <p
-                  className={`mt-2 text-5xl font-bold tracking-tight sm:text-6xl ${
-                    profit >= 0 ? "text-white" : "text-red-200"
-                  }`}
-                >
-                  {totalCost > 0 ? formatPercent(roi) : "—"}
-                </p>
-                <p className="mt-3 text-sm text-blue-100">
-                  {totalCost > 0
-                    ? profit >= 0
-                      ? "Positive return on your campaign investment."
-                      : "Campaign costs exceed additional revenue."
-                    : "Enter costs above to calculate ROI."}
-                </p>
+            <section className="flex flex-col gap-5 rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm sm:p-8 lg:col-span-3">
+              <div className="flex flex-col gap-3 border-b border-slate-100 pb-5 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">
+                    {copy.campaignHealth}
+                  </p>
+                  <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-950">
+                    {performance.rating}
+                  </h2>
+                </div>
+                <span className={`inline-flex w-fit rounded-full px-4 py-2 text-sm font-semibold ${performance.accent.badge}`}>
+                  {performance.health}
+                </span>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-                <h2 className="text-lg font-semibold text-slate-900">Results</h2>
-                <dl className="mt-6 space-y-5">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-5">
-                    <dt className="text-sm text-slate-600">Total Cost</dt>
-                    <dd className="text-lg font-semibold text-slate-900">
-                      {formatCurrency(totalCost)}
-                    </dd>
-                  </div>
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-5">
-                    <dt className="text-sm text-slate-600">Profit</dt>
-                    <dd
-                      className={`text-lg font-semibold ${
-                        profit >= 0 ? "text-emerald-600" : "text-red-600"
-                      }`}
-                    >
-                      {formatCurrency(profit)}
-                    </dd>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <dt className="text-sm text-slate-600">ROI %</dt>
-                    <dd
-                      className={`text-lg font-semibold ${
-                        roi >= 0 ? "text-blue-600" : "text-red-600"
-                      }`}
-                    >
-                      {totalCost > 0 ? formatPercent(roi) : "—"}
-                    </dd>
-                  </div>
-                </dl>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <ResultCard label={copy.results.totalCost} value={hasInput ? fmt(totalCost) : t.common.emDash} hover={performance.accent.cardHover} />
+                <ResultCard
+                  label={copy.results.profit}
+                  value={hasInput ? fmt(profit) : t.common.emDash}
+                  hover={performance.accent.cardHover}
+                  valueClass={!hasInput ? "" : profit >= 0 ? "text-emerald-600" : "text-red-600"}
+                />
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-blue-50/50 p-5">
+              <div className={`flex min-h-44 rounded-2xl border bg-gradient-to-br p-6 text-white shadow-lg sm:min-h-48 sm:p-8 ${performance.accent.gradient} ${performance.accent.border}`}>
+                <div className="flex w-full flex-col justify-between gap-6 sm:flex-row sm:items-center">
+                  <div>
+                    <p className="text-sm font-medium text-white/80">{copy.results.roiLabel}</p>
+                    <p className="mt-3 text-5xl font-bold tracking-tight sm:text-6xl">
+                      {hasCostData && hasInput ? formatPercent(roi) : t.common.emDash}
+                    </p>
+                  </div>
+                  <span className="inline-flex w-fit rounded-full bg-white/25 px-4 py-1.5 text-sm font-semibold text-white">
+                    {performance.rating}
+                  </span>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5 shadow-sm transition-all duration-200 hover:border-blue-200 hover:bg-white hover:shadow-md sm:p-6">
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                  Formula
+                  {copy.recommendation}
                 </p>
-                <ul className="mt-2 space-y-1 text-sm text-slate-600">
-                  <li>Total Cost = Campaign + Prize + Staff</li>
-                  <li>Profit = Additional Revenue − Total Cost</li>
-                  <li>ROI = Profit ÷ Total Cost × 100</li>
-                </ul>
+                <p className="mt-3 text-base leading-relaxed text-slate-700">
+                  {recommendation}
+                </p>
               </div>
             </section>
           </div>
         </div>
       </main>
+    </div>
+  );
+}
+
+function ResultCard({
+  label,
+  value,
+  hover,
+  valueClass = "text-slate-900",
+}: {
+  label: string;
+  value: string;
+  hover: string;
+  valueClass?: string;
+}) {
+  return (
+    <div className={`rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md sm:p-5 ${hover}`}>
+      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
+      <p className={`mt-2 text-2xl font-bold tracking-tight sm:text-3xl ${valueClass}`}>{value}</p>
     </div>
   );
 }

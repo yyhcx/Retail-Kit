@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "ROI Calculator | Retail Kit",
-  description: "Calculate retail campaign ROI and profitability.",
+  title: "Campaign ROI Analysis | Retail Kit",
+  description: "Evaluate the return on retail campaign investment.",
 };
 
 export default function ROICalculatorLayout({
