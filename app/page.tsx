@@ -124,6 +124,15 @@ export default function Home() {
           <p className="text-sm text-slate-600">
             &copy; {new Date().getFullYear()} {t.common.brand}. {t.common.footer}
           </p>
+          <p className="mt-3 text-sm text-slate-500">
+            {t.common.feedbackPrefix}{" "}
+            <a
+              href="mailto:storemanagerkit@163.com"
+              className="font-medium text-sky-700 underline decoration-sky-200 underline-offset-4 transition-colors hover:text-sky-900"
+            >
+              storemanagerkit@163.com
+            </a>
+          </p>
         </div>
       </footer>
     </div>

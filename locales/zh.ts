@@ -13,6 +13,7 @@ const zh = {
     days: "天",
     currencySymbol: "¥",
     footer: "为零售团队提供实用的决策支持",
+    feedbackPrefix: "如有任何建议，欢迎发送邮件至",
   },
   language: {
     label: "🌐",

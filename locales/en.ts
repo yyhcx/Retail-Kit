@@ -11,6 +11,7 @@ const en = {
     days: "days",
     currencySymbol: "$",
     footer: "Practical decision support for retail teams.",
+    feedbackPrefix: "Feedback and suggestions are welcome at",
   },
   language: {
     label: "🌐",
